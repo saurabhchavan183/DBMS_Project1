@@ -67,14 +67,17 @@ typedef struct PFhash_entry {
 #define PFhash(fd,page) (((fd)+(page)) % PF_HASH_TBL_SIZE)
 
 /******************* Interface functions from Hash Table ****************/
-extern void PFhashInit();
-extern PFbpage *PFhashFind();
-extern PFhashInsert();
-extern PFhashDelete();
-extern PFhashPrint();
+extern void PFhashInit(); /* [cite: 558] */
+extern PFbpage *PFhashFind(int fd, int page); /* [cite: 560] */
+extern int PFhashInsert(int fd, int page, PFbpage *bpage); /* [cite: 565] */
+extern int PFhashDelete(int fd, int page); /* [cite: 572] */
+extern void PFhashPrint(); /* [cite: 577] */
 
 /****************** Interface functions from Buffer Manager *************/
-extern PFbufGet();
-extern PFbufUnfix();
-extern PFbufalloc();
-extern PFbufReleaseFile();
+/* [cite: 510, 526, 534, 541] */
+extern int PFbufGet(int fd, int pagenum, PFfpage **fpage, int (*readfcn)(), int (*writefcn)());
+extern int PFbufUnfix(int fd, int pagenum, int dirty);
+extern int PFbufAlloc(int fd, int pagenum, PFfpage **fpage, int (*writefcn)());
+extern int PFbufReleaseFile(int fd, int (*writefcn)());
+/* NEW: Add this prototype for the internal function */
+extern int PFbufUsed(int fd, int pagenum);

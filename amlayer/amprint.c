@@ -1,6 +1,6 @@
 # include <stdio.h>
 # include "am.h"
-# include "pf.h"
+# include "../pflayer/pf.h"
 
 AM_PrintIntNode(pageBuf,attrType)
 char *pageBuf;

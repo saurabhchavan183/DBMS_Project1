@@ -1,10 +1,26 @@
 /* pf.c: Paged File Interface Routines+ support routines */
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include <sys/file.h>
 #include "pf.h"
 #include "pftypes.h"
+
+/* --- ADD THIS BLOCK OF CODE --- */
+
+/* Global variables for buffer config and stats */
+int PFnumbufs = 20; /* Default buffer size */
+PF_Strategy PFstrategy = PF_LRU; /* Default strategy */
+
+/* Statistics */
+int pf_logical_reads = 0;
+int pf_logical_writes = 0;
+int pf_physical_reads = 0;
+int pf_physical_writes = 0;
+int pf_pages_accessed = 0;
+
+/* --- END OF BLOCK --- */
 
 /* To keep system V and PC users happy */
 #ifndef L_SET
@@ -24,7 +40,7 @@ sense that it's <0 or >= # of pages in the file */
 #define PFinvalidPagenum(fd,pagenum) ((pagenum)<0 || (pagenum) >= \
 				PFftab[fd].hdr.numpages)
 
-extern char *malloc();
+// extern char *malloc();
 
 /****************** Internal Support Functions *****************************/
 static char *savestr(str)
@@ -42,7 +58,7 @@ char *s;
 	return(s);
 }
 
-static PFtabFindFname(fname)
+static int PFtabFindFname(fname)
 char *fname;		/* file name to find */
 /****************************************************************************
 SPECIFICATIONS:
@@ -67,7 +83,7 @@ int i;
 	return(-1);
 }
 
-static PFftabFindFree()
+static int PFftabFindFree()
 /****************************************************************************
 SPECIFICATIONS:
 	Find a free entry in the open file table "PFtab", and return its
@@ -89,7 +105,7 @@ int i;
 	return(-1);
 }
 
-PFreadfcn(fd,pagenum,buf)
+int PFreadfcn(fd,pagenum,buf)
 int fd;	/* file descriptor */
 int pagenum; /* page number */
 PFfpage *buf;
@@ -126,7 +142,7 @@ int error;
 	return(PFE_OK);
 }
 
-PFwritefcn(fd,pagenum,buf)
+int PFwritefcn(fd,pagenum,buf)
 int fd;		/* file descriptor */
 int pagenum;	/* page to read */
 PFfpage *buf;	/* buffer where to read the page */
@@ -168,31 +184,70 @@ int error;
 
 /************************* Interface Routines ****************************/
 
-void PF_Init()
-/****************************************************************************
-SPECIFICATIONS:
-	Initialize the PF interface. Must be the first function called
-	in order to use the PF ADT.
+// void PF_Init()
+// /****************************************************************************
+// SPECIFICATIONS:
+// 	Initialize the PF interface. Must be the first function called
+// 	in order to use the PF ADT.
 
-AUTHOR: clc
+// AUTHOR: clc
 
-RETURN VALUE: none
+// RETURN VALUE: none
 
-GLOBAL VARIABLES MODIFIED:
-	PFftab
-*****************************************************************************/
+// GLOBAL VARIABLES MODIFIED:
+// 	PFftab
+// *****************************************************************************/
+// {
+// int i;
+// 	/* init the hash table */
+// 	PFhashInit();
+
+// 	/* init the file table to be not used*/
+// 	for (i=0; i < PF_FTAB_SIZE; i++){
+// 		PFftab[i].fname = NULL;
+// 	}
+// }
+/* MODIFIED: PF_Init */
+void PF_Init(int num_bufs, PF_Strategy strategy)
 {
-int i;
-	/* init the hash table */
-	PFhashInit();
+    int i;
+    
+    /* Set buffer configuration */
+    PFnumbufs = (num_bufs > 0) ? num_bufs : 20; /* Enforce a minimum/default */
+    PFstrategy = strategy;
 
-	/* init the file table to be not used*/
-	for (i=0; i < PF_FTAB_SIZE; i++){
-		PFftab[i].fname = NULL;
-	}
+    /* init the hash table */
+    PFhashInit();
+    
+    /* init the file table to be not used*/
+    for (i=0; i < PF_FTAB_SIZE; i++){
+        PFftab[i].fname = NULL;
+    }
+    
+    /* Reset stats */
+    PF_ResetStats();
 }
 
-PF_CreateFile(fname)
+/* NEW: Stats functions */
+void PF_ResetStats()
+{
+    pf_logical_reads = 0;
+    pf_logical_writes = 0;
+    pf_physical_reads = 0;
+    pf_physical_writes = 0;
+    pf_pages_accessed = 0;
+}
+
+void PF_GetStats(int *log_reads, int *log_writes, int *phys_reads, int *phys_writes, int *pages_acc)
+{
+    *log_reads = pf_logical_reads;
+    *log_writes = pf_logical_writes;
+    *phys_reads = pf_physical_reads;
+    *phys_writes = pf_physical_writes;
+    *pages_acc = pf_pages_accessed;
+}
+
+int PF_CreateFile(fname)
 char *fname;	/* name of file to create */
 /****************************************************************************
 SPECIFICATIONS:
@@ -239,7 +294,7 @@ int error;
 }
 
 
-PF_DestroyFile(fname)
+int PF_DestroyFile(fname)
 char *fname;		/* file name to destroy */
 /****************************************************************************
 SPECIFICATIONS:
@@ -273,7 +328,7 @@ int error;
 }
 
 
-PF_OpenFile(fname)
+int PF_OpenFile(fname)
 char *fname;		/* name of the file to open */
 /****************************************************************************
 SPECIFICATIONS:
@@ -337,7 +392,7 @@ int fd; /* file descriptor */
 	return(fd);
 }
 
-PF_CloseFile(fd)
+int PF_CloseFile(fd)
 int fd;		/* file descriptor to close */
 /****************************************************************************
 SPECIFICATIONS:
@@ -402,7 +457,7 @@ int error;
 }
 
 
-PF_GetFirstPage(fd,pagenum,pagebuf)
+int PF_GetFirstPage(fd,pagenum,pagebuf)
 int fd;	/* file descriptor */
 int *pagenum;	/* page number of first page */
 char **pagebuf;	/* pointer to the pointer to buffer */
@@ -428,7 +483,7 @@ RETURN VALUE:
 }
 
 
-PF_GetNextPage(fd,pagenum,pagebuf)
+int PF_GetNextPage(fd,pagenum,pagebuf)
 int fd;	/* file descriptor of the file */
 int *pagenum;	/* old page number on input, new page number on output */
 char **pagebuf;	/* pointer to pointer to buffer of page data */
@@ -490,7 +545,7 @@ PFfpage *fpage;	/* pointer to file page */
 
 }
 
-PF_GetThisPage(fd,pagenum,pagebuf)
+int PF_GetThisPage(fd,pagenum,pagebuf)
 int fd;		/* file descriptor */
 int pagenum;	/* page number to read */
 char **pagebuf;	/* pointer to pointer to page data */
@@ -545,7 +600,7 @@ PFfpage *fpage;
 	}
 }
 
-PF_AllocPage(fd,pagenum,pagebuf)
+int PF_AllocPage(fd,pagenum,pagebuf)
 int fd;		/* file descriptor */
 int *pagenum;	/* page number */
 char **pagebuf;	/* pointer to pointer to page buffer*/
@@ -616,7 +671,7 @@ int error;
 	return(PFE_OK);
 }
 
-PF_DisposePage(fd,pagenum)
+int PF_DisposePage(fd,pagenum)
 int fd;		/* file descriptor */
 int pagenum;	/* page number */
 /****************************************************************************
@@ -668,7 +723,7 @@ int error;
 	return(PFbufUnfix(fd,pagenum,TRUE));
 }
 
-PF_UnfixPage(fd,pagenum,dirty)
+int PF_UnfixPage(fd,pagenum,dirty)
 int fd;	/* file descriptor */
 int pagenum;	/* page number */
 int dirty;	/* true if file is dirty */

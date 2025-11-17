@@ -3,6 +3,7 @@ test1.c: tests simple index insertion and scans.
 ************************************************************************/
 #include <stdio.h>
 #include "am.h"
+#include "../pflayer/pf.h"
 #include "testam.h"
 
 #define MAXRECS	50
@@ -22,7 +23,7 @@ int numrec;		/* # of records retrieved*/
 
 	/* init */
 	printf("initializing\n");
-	PF_Init();
+	PF_Init(20, PF_LRU);
 
 	/* create index on the both field of the record*/
 	printf("creating indices\n");

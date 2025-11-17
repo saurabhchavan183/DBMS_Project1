@@ -4,13 +4,23 @@ PFbufPrint() */
 #include <stdio.h>
 #include "pf.h"
 #include "pftypes.h"
+#include <stdlib.h>
 
 static int PFnumbpage = 0;	/* # of buffer pages in memory */
 static PFbpage *PFfirstbpage= NULL;	/* ptr to first buffer page, or NULL */
 static PFbpage *PFlastbpage = NULL;	/* ptr to last buffer page, or NULL */
 static PFbpage *PFfreebpage= NULL;	/* list of free buffer pages */
 
-extern char *malloc();
+// extern char *malloc();
+/* NEW: Get access to global config and stats counters */
+extern int PFnumbufs;
+extern PF_Strategy PFstrategy;
+
+extern int pf_logical_reads;
+extern int pf_logical_writes;
+extern int pf_physical_reads;
+extern int pf_physical_writes;
+extern int pf_pages_accessed;
 
 static void PFbufInsertFree(bpage)
 PFbpage *bpage;
@@ -91,7 +101,7 @@ GLOBAL VARIABLES MODIFIED:
 }
 
 
-static PFbufInternalAlloc(bpage,writefcn)
+static int PFbufInternalAlloc(bpage,writefcn)
 PFbpage **bpage;	/* pointer to pointer to buffer bpage to be allocated*/
 int (*writefcn)();
 /****************************************************************************
@@ -132,7 +142,7 @@ int error;		/* error value returned*/
 		*bpage = PFfreebpage;
 		PFfreebpage = (*bpage)->nextpage;
 	}
-	else if (PFnumbpage < PF_MAX_BUFS){
+	else if (PFnumbpage < PFnumbufs){
 		/* We have not reached max buffer limit, so
 		malloc() a new one */
 		if ((*bpage=(PFbpage *)malloc(sizeof(PFbpage)))==NULL){
@@ -187,7 +197,7 @@ int error;		/* error value returned*/
 
 /************************* Interface to the Outside World ****************/
 
-PFbufGet(fd,pagenum,fpage,readfcn,writefcn)
+int PFbufGet(fd,pagenum,fpage,readfcn,writefcn)
 int fd;	/* file descriptor */
 int pagenum;	/* page number */
 PFfpage **fpage;	/* pointer to pointer to file page */
@@ -222,6 +232,9 @@ GLOBAL VARIABLES MODIFIED:
 {
 PFbpage *bpage;	/* pointer to buffer */
 int error;
+	/* NEW: Stats update */
+    pf_logical_reads++;
+    pf_pages_accessed++;
 
 	if ((bpage=PFhashFind(fd,pagenum)) == NULL){
 		/* page not in buffer. */
@@ -271,7 +284,7 @@ int error;
 	return(PFE_OK);
 }
 
-PFbufUnfix(fd,pagenum,dirty)
+int PFbufUnfix(fd,pagenum,dirty)
 int fd;		/* file descriptor */
 int pagenum;	/* page number */
 int dirty;	/* TRUE if page is dirty */
@@ -306,6 +319,7 @@ PFbpage *bpage;
 	if (dirty)
 		/* mark this page dirty */
 		bpage->dirty = TRUE;
+		pf_logical_writes++;
 	
 	/* unfix the page */
 	bpage->fixed = FALSE;
@@ -319,7 +333,7 @@ PFbpage *bpage;
 	return(PFE_OK);
 }
 
-PFbufAlloc(fd,pagenum,fpage,writefcn)
+int PFbufAlloc(fd,pagenum,fpage,writefcn)
 int fd;		/* file descriptor */
 int pagenum;	/* page number */
 PFfpage **fpage;	/* pointer to file page */
@@ -339,6 +353,9 @@ RETURN VALUE:
 {
 PFbpage *bpage;
 int error;
+	/* NEW: Stats update */
+    pf_logical_reads++;
+    pf_pages_accessed++;
 
 	*fpage = NULL;	/* initial value of fpage */
 
@@ -372,7 +389,7 @@ int error;
 }
 
 
-PFbufReleaseFile(fd,writefcn)
+int PFbufReleaseFile(fd,writefcn)
 int fd;		/* file descriptor */
 int (*writefcn)();	/* function to write a page of file */
 /****************************************************************************
@@ -428,11 +445,12 @@ int error;		/* error code */
 		}
 		else	bpage = bpage->nextpage;
 	}
+	pf_physical_writes++;
 	return(PFE_OK);
 }
 
 
-PFbufUsed(fd,pagenum)
+int PFbufUsed(fd,pagenum)
 int fd;		/* file descriptor */
 int pagenum;	/* page number */
 /****************************************************************************
@@ -465,6 +483,10 @@ PFbpage *bpage;	/* pointer to the bpage we are looking for */
 	/* mark this page dirty */
 	bpage->dirty = TRUE;
 
+	/* NEW: Stats update */
+    pf_logical_writes++;
+    pf_pages_accessed++;
+
 	/* make this page head of the list of buffers*/
 	PFbufUnlink(bpage);
 	PFbufLinkHead(bpage);
@@ -489,8 +511,11 @@ PFbpage *bpage;
 	else {
 		printf("fd\tpage\tfixed\tdirty\tfpage\n");
 		for(bpage = PFfirstbpage; bpage != NULL; bpage= bpage->nextpage)
-			printf("%d\t%d\t%d\t%d\t%d\n",
+			// printf("%d\t%d\t%d\t%d\t%d\n",
+			// 	bpage->fd,bpage->page,(int)bpage->fixed,
+			// 	(int)bpage->dirty,(int)&bpage->fpage);
+			printf("%d\t%d\t%d\t%d\t%p\n",
 				bpage->fd,bpage->page,(int)bpage->fixed,
-				(int)bpage->dirty,(int)&bpage->fpage);
+				(int)bpage->dirty, (void*)&bpage->fpage);
 	}
 }

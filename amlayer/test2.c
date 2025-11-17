@@ -2,6 +2,7 @@
 splitting of pages of your B+ tree */
 #include <stdio.h>
 #include "am.h"
+#include "../pflayer/pf.h"
 #include "testam.h"
 
 #define STRING_SIZE 250	/* string */
@@ -19,7 +20,7 @@ int numrec;	/* # of records retrieved in s scan */
 
 	/* init */
 	printf("initializing\n");
-	PF_Init();
+	PF_Init(20, PF_LRU);
 
 	/* create index */
 	printf("creating index\n");

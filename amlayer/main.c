@@ -1,7 +1,7 @@
 /* test3.c: tests deletion and scan. */
 #include <stdio.h>
 #include "am.h"
-#include "pf.h"
+#include "../pflayer/pf.h"
 #include "testam.h"
 
 #define MAXRECS	10000	/* max # of records to insert */
@@ -18,7 +18,7 @@ int testval;
 
 	/* init */
 	printf("initializing\n");
-	PF_Init();
+	PF_Init(20, PF_LRU); /* Use 20 buffers and LRU by default */
 
 	/* create index */
 	printf("creating index\n");

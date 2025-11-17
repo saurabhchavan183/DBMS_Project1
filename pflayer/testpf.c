@@ -1,17 +1,24 @@
 /* testpf.c */
 #include <stdio.h>
+#include <stdlib.h>  /* <-- ADD THIS LINE */
 #include "pf.h"
 #include "pftypes.h"
 
 #define FILE1	"file1"
 #define FILE2	"file2"
 
-main()
+/* --- ADD THESE PROTOTYPES --- */
+void writefile(char *fname);
+void readfile(char *fname);
+void printfile(int fd);
+
+int main()
 {
 int error;
 int i;
-int pagenum,*buf;
-int *buf1,*buf2;
+int pagenum;
+char *buf;
+// int *buf1,*buf2;
 int fd1,fd2;
 
 
@@ -303,12 +310,55 @@ manager would allow, and write the page number
 into the data.
 then, close file.
 ******************************************************************/
-writefile(fname)
-char *fname;
+// writefile(fname)
+// char *fname;
+// {
+// int i;
+// int fd,pagenum;
+// int *buf;
+// int error;
+
+// 	/* open file1, and allocate a few pages in there */
+// 	if ((fd=PF_OpenFile(fname))<0){
+// 		PF_PrintError("open file1");
+// 		exit(1);
+// 	}
+// 	printf("opened %s\n",fname);
+
+// 	for (i=0; i < PF_MAX_BUFS; i++){
+// 		if ((error=PF_AllocPage(fd,&pagenum,&buf))!= PFE_OK){
+// 			PF_PrintError("first buffer\n");
+// 			exit(1);
+// 		}
+// 		*((int *)buf) = i;
+// 		printf("allocated page %d\n",pagenum);
+// 	}
+
+// 	if ((error=PF_AllocPage(fd,&pagenum,&buf))==PFE_OK){
+// 		printf("too many buffers, and it's still OK\n");
+// 		exit(1);
+// 	}
+
+// 	/* unfix these pages */
+// 	for (i=0; i < PF_MAX_BUFS; i++){
+// 		if ((error=PF_UnfixPage(fd,i,TRUE))!= PFE_OK){
+// 			PF_PrintError("unfix buffer\n");
+// 			exit(1);
+// 		}
+// 	}
+
+// 	/* close the file */
+// 	if ((error=PF_CloseFile(fd))!= PFE_OK){
+// 		PF_PrintError("close file1\n");
+// 		exit(1);
+// 	}
+
+// }
+void writefile(char *fname)
 {
 int i;
 int fd,pagenum;
-int *buf;
+char *buf; /* <-- Changed from int * to char * */
 int error;
 
 	/* open file1, and allocate a few pages in there */
@@ -345,17 +395,34 @@ int error;
 		PF_PrintError("close file1\n");
 		exit(1);
 	}
-
 }
 
 /**************************************************************
 print the content of file
 *************************************************************/
-readfile(fname)
-char *fname;
+// readfile(fname)
+// char *fname;
+// {
+// int error;
+// int *buf;
+// int pagenum;
+// int fd;
+
+// 	printf("opening %s\n",fname);
+// 	if ((fd=PF_OpenFile(fname))<0){
+// 		PF_PrintError("open file");
+// 		exit(1);
+// 	}
+// 	printfile(fd);
+// 	if ((error=PF_CloseFile(fd))!= PFE_OK){
+// 		PF_PrintError("close file");
+// 		exit(1);
+// 	}
+// }
+void readfile(char *fname)
 {
 int error;
-int *buf;
+char *buf; /* <-- Changed from int * to char * */
 int pagenum;
 int fd;
 
@@ -371,17 +438,40 @@ int fd;
 	}
 }
 
-printfile(fd)
-int fd;
+// printfile(fd)
+// int fd;
+// {
+// int error;
+// int *buf;
+// int pagenum;
+
+// 	printf("reading file\n");
+// 	pagenum = -1;
+// 	while ((error=PF_GetNextPage(fd,&pagenum,&buf))== PFE_OK){
+// 		printf("got page %d, %d\n",pagenum,*buf);
+// 		if ((error=PF_UnfixPage(fd,pagenum,FALSE))!= PFE_OK){
+// 			PF_PrintError("unfix");
+// 			exit(1);
+// 		}
+// 	}
+// 	if (error != PFE_EOF){
+// 		PF_PrintError("not eof\n");
+// 		exit(1);
+// 	}
+// 	printf("eof reached\n");
+
+// }
+void printfile(int fd)
 {
 int error;
-int *buf;
+char *buf; /* <-- Changed from int * to char * */
 int pagenum;
 
 	printf("reading file\n");
 	pagenum = -1;
 	while ((error=PF_GetNextPage(fd,&pagenum,&buf))== PFE_OK){
-		printf("got page %d, %d\n",pagenum,*buf);
+		/* We print *buf as an int because we know we stored an int there */
+		printf("got page %d, %d\n",pagenum, *((int *)buf) );
 		if ((error=PF_UnfixPage(fd,pagenum,FALSE))!= PFE_OK){
 			PF_PrintError("unfix");
 			exit(1);
@@ -392,5 +482,4 @@ int pagenum;
 		exit(1);
 	}
 	printf("eof reached\n");
-
 }
